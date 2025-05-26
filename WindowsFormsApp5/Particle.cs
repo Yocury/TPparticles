@@ -29,7 +29,7 @@ namespace WindowsFormsApp5
             int alpha = (int)(k * 255);
 
             // создаем цвет из уже существующего, но привязываем к нему еще и значение альфа канала
-            var color = Color.FromArgb(alpha, Color.Black);
+            var color = Color.FromArgb(alpha, Color.White);
             var b = new SolidBrush(color);
 
             // остальное все так же

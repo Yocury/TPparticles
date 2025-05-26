@@ -14,101 +14,70 @@ namespace WindowsFormsApp5
 {
     public partial class Form1 : Form
     {
-        public List<Emitter> emitters = new List<Emitter>();
-        Emitter emitter;
-
-        InPoint point1; 
-        OutPoint point2;
-        BouncePoint point3;
+        private List<Particle> particles = new List<Particle>();
+        private Random random = new Random();
+        private const int MAX_PARTICLES = 3;
 
         public Form1()
         {
             InitializeComponent();
             picDisplay.Image = new Bitmap(picDisplay.Width, picDisplay.Height);
 
-            this.emitter = new Emitter // создаю эмиттер и привязываю его к полю emitter
-            {
-                Direction = 0,
-                Spreading = 10,
-                SpeedMin = 10,
-                SpeedMax = 10,
-                ColorFrom = Color.Gold,
-                ColorTo = Color.FromArgb(0, Color.Red),
-                ParticlesPerTick = 10,
-                X = picDisplay.Width / 2,
-                Y = picDisplay.Height / 2,
-            };
+            // Set up timer
+            timer1.Interval = 50;
+            timer1.Start();
 
-            emitters.Add(this.emitter);
+            // Initial particle creation
+            CreateParticlesIfNeeded();
+        }
 
-            // добавил
-            point1 = new InPoint
+        private void CreateParticlesIfNeeded()
+        {
+            while (particles.Count < MAX_PARTICLES)
             {
-                X = picDisplay.Width / 2 + 100,
-                Y = picDisplay.Height / 2,
-            };
-            point2 = new OutPoint
-            {
-                X = picDisplay.Width / 2 - 100,
-                Y = picDisplay.Height / 2,
-            };
-            point3 = new BouncePoint
-            {
-                X = picDisplay.Width / 2 - 100,
-                Y = picDisplay.Height / 2 + 100, 
-            };
-
-            // привязываем поля к эмиттеру
-            emitter.impactPoints.Add(point1);
-            emitter.impactPoints.Add(point2);
-            emitter.impactPoints.Add(point3);
+                var particle = new Particle
+                {
+                    X = random.Next(50, picDisplay.Width - 50),
+                    Y = random.Next(50, picDisplay.Height - 50),
+                    Radius = 20
+                };
+                particles.Add(particle);
+            }
         }
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            emitter.UpdateState(); // тут теперь обновляем эмиттер
+            CreateParticlesIfNeeded();
 
             using (var g = Graphics.FromImage(picDisplay.Image))
             {
-                g.Clear(Color.Black);
-                emitter.Render(g); // а тут теперь рендерим через эмиттер
+                g.Clear(Color.White);
+                foreach (var particle in particles)
+                {
+                    using (var brush = new SolidBrush(Color.Green))
+                    {
+                        g.FillEllipse(brush, particle.X - particle.Radius, 
+                            particle.Y - particle.Radius, 
+                            particle.Radius * 2, 
+                            particle.Radius * 2);
+                    }
+                }
             }
-
             picDisplay.Invalidate();
-        }
-
-        private void tbDirection_Scroll(object sender, EventArgs e)
-        {
-            emitter.Direction = tbDirection.Value;
-        }
-
-        private void tbGraviton_Scroll(object sender, EventArgs e)
-        {
-            point1.rad = tbGraviton.Value;
-        }
-
-        private void tbGraviton2_Scroll(object sender, EventArgs e)
-        {
-            point2.rad = tbGraviton2.Value;
         }
 
         private void picDisplay_MouseClick(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Right)
+            for (int i = particles.Count - 1; i >= 0; i--)
             {
-                point1.X = e.X;
-                point1.Y = e.Y;
+                var particle = particles[i];
+                // Check if click is within particle bounds
+                if (Math.Pow(e.X - particle.X, 2) + Math.Pow(e.Y - particle.Y, 2) <= Math.Pow(particle.Radius, 2))
+                {
+                    particles.RemoveAt(i);
+                    break;
+                }
             }
-            else {
-                point2.X = e.X;
-                point2.Y = e.Y;
-            }
-            
-        }
-
-        private void tbBounce_Scroll(object sender, EventArgs e)
-        {
-            point3.X = tbBounce.Value;
         }
     }
 }
