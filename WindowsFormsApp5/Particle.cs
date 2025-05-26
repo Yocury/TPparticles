@@ -23,7 +23,7 @@ namespace WindowsFormsApp5
 
         public Color Color;
         public float Opacity = 0; // От 0 до 1
-        public float LifeTime = 100; // Время жизни частицы
+        public float LifeTime = 60; // Уменьшили время жизни с 100 до 60
         public bool IsAppearing = true; // Флаг, показывающий появляется ли частица или исчезает
 
         public virtual void Draw(Graphics g)
@@ -83,7 +83,7 @@ namespace WindowsFormsApp5
         {
             if (IsAppearing)
             {
-                Opacity += 0.1f; // Увеличили скорость появления в 5 раз (было 0.02f)
+                Opacity += 0.1f;
                 if (Opacity >= 1)
                 {
                     Opacity = 1;
@@ -92,10 +92,10 @@ namespace WindowsFormsApp5
             }
             else
             {
-                LifeTime -= 0.5f; // Уменьшаем время жизни
-                if (LifeTime <= 30) // Начинаем исчезать, когда осталось мало времени жизни
+                LifeTime -= 1.0f; // Увеличили скорость уменьшения времени жизни (было 0.5f)
+                if (LifeTime <= 15) // Уменьшили порог начала исчезновения (было 30)
                 {
-                    Opacity = LifeTime / 30; // Постепенное исчезновение
+                    Opacity = LifeTime / 15; // Изменили делитель для более быстрого исчезновения (было 30)
                 }
             }
         }

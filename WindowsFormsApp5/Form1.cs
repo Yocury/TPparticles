@@ -22,21 +22,69 @@ namespace WindowsFormsApp5
         private float redSpawnDelay = 0;
         private float greenSpawnDelay = 0;
         
-        // Константы для настройки задержек (уменьшены в 2-3 раза)
-        private const float MIN_SPAWN_DELAY = 0.2f; // Минимальная задержка в секундах (было 0.5)
-        private const float MAX_SPAWN_DELAY = 0.7f; // Максимальная задержка в секундах (было 2.0)
+        // Настройки сложности
+        private float minSpawnDelay;
+        private float maxSpawnDelay;
+        private int particleRadius;
+        private float redParticleProbability;
+        private float particleLifeTime; // Добавляем время жизни как параметр сложности
+
+        // Перечисление для уровней сложности
+        private enum Difficulty { Easy, Medium, Hard }
 
         public Form1()
         {
             InitializeComponent();
-            picDisplay.Image = new Bitmap(picDisplay.Width, picDisplay.Height);
 
-            // Set up timer
-            timer1.Interval = 16; // Примерно 60 FPS
-            timer1.Start();
+            // Показываем меню выбора сложности
+            using (var menuForm = new MenuForm())
+            {
+                if (menuForm.ShowDialog() != DialogResult.OK)
+                {
+                    // Если пользователь закрыл окно без выбора, закрываем игру
+                    Application.Exit();
+                    return;
+                }
 
-            // Initial particle creation
-            CreateParticlesIfNeeded();
+                // Устанавливаем параметры в зависимости от выбранной сложности
+                SetDifficultyParameters((MenuForm.Difficulty)menuForm.SelectedDifficulty);
+            }
+
+            // Создаем bitmap после инициализации формы
+            if (picDisplay != null)
+            {
+                picDisplay.Image = new Bitmap(picDisplay.Width, picDisplay.Height);
+                timer1.Interval = 16;
+                timer1.Start();
+            }
+        }
+
+        private void SetDifficultyParameters(MenuForm.Difficulty difficulty)
+        {
+            switch (difficulty)
+            {
+                case MenuForm.Difficulty.Easy:
+                    minSpawnDelay = 0.3f;
+                    maxSpawnDelay = 0.6f;
+                    particleRadius = 20;
+                    redParticleProbability = 0.4f;
+                    particleLifeTime = 60f;
+                    break;
+                case MenuForm.Difficulty.Medium:
+                    minSpawnDelay = 0.15f;
+                    maxSpawnDelay = 0.4f;
+                    particleRadius = 15;
+                    redParticleProbability = 0.6f;
+                    particleLifeTime = 35f; // Уменьшили с 45f до 35f для более быстрого исчезновения
+                    break;
+                case MenuForm.Difficulty.Hard:
+                    minSpawnDelay = 0.05f;
+                    maxSpawnDelay = 0.2f;
+                    particleRadius = 10;
+                    redParticleProbability = 0.8f;
+                    particleLifeTime = 40f; // Увеличили с 30f до 40f для небольшого увеличения времени жизни
+                    break;
+            }
         }
 
         private void CreateParticlesIfNeeded()
@@ -56,19 +104,22 @@ namespace WindowsFormsApp5
             {
                 if (redSpawnDelay <= 0)
                 {
-                    var particle = new Particle
+                    // Проверяем вероятность появления красной частицы
+                    if (random.NextDouble() < redParticleProbability)
                     {
-                        X = random.Next(50, picDisplay.Width - 50),
-                        Y = random.Next(50, picDisplay.Height - 50),
-                        Radius = 20,
-                        Color = Color.Red,
-                        Opacity = 0,
-                        LifeTime = 100,
-                        IsAppearing = true
-                    };
-                    particles.Add(particle);
-                    // Устанавливаем новую случайную задержку
-                    redSpawnDelay = (float)(random.NextDouble() * (MAX_SPAWN_DELAY - MIN_SPAWN_DELAY) + MIN_SPAWN_DELAY);
+                        var particle = new Particle
+                        {
+                            X = random.Next(50, picDisplay.Width - 50),
+                            Y = random.Next(50, picDisplay.Height - 50),
+                            Radius = particleRadius,
+                            Color = Color.Red,
+                            Opacity = 0,
+                            LifeTime = particleLifeTime,
+                            IsAppearing = true
+                        };
+                        particles.Add(particle);
+                    }
+                    redSpawnDelay = (float)(random.NextDouble() * (maxSpawnDelay - minSpawnDelay) + minSpawnDelay);
                 }
                 else
                 {
@@ -85,16 +136,15 @@ namespace WindowsFormsApp5
                     {
                         X = random.Next(50, picDisplay.Width - 50),
                         Y = random.Next(50, picDisplay.Height - 50),
-                        Radius = 20,
+                        Radius = particleRadius,
                         Color = Color.Green,
                         Opacity = 0,
-                        LifeTime = 100,
+                        LifeTime = particleLifeTime,
                         IsAppearing = true
                     };
                     particles.Add(particle);
                     greenCount++;
-                    // Устанавливаем новую случайную задержку
-                    greenSpawnDelay = (float)(random.NextDouble() * (MAX_SPAWN_DELAY - MIN_SPAWN_DELAY) + MIN_SPAWN_DELAY);
+                    greenSpawnDelay = (float)(random.NextDouble() * (maxSpawnDelay - minSpawnDelay) + minSpawnDelay);
                 }
                 else
                 {
@@ -105,6 +155,8 @@ namespace WindowsFormsApp5
 
         private void timer1_Tick(object sender, EventArgs e)
         {
+            if (picDisplay.Image == null) return;
+
             // Обновляем состояние частиц
             foreach (var particle in particles)
             {
@@ -146,7 +198,7 @@ namespace WindowsFormsApp5
                     {
                         particles.RemoveAt(i);
                         // Устанавливаем задержку для появления новой зеленой частицы
-                        greenSpawnDelay = (float)(random.NextDouble() * (MAX_SPAWN_DELAY - MIN_SPAWN_DELAY) + MIN_SPAWN_DELAY);
+                        greenSpawnDelay = (float)(random.NextDouble() * (maxSpawnDelay - minSpawnDelay) + minSpawnDelay);
                     }
                     break;
                 }
