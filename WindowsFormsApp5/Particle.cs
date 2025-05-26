@@ -21,6 +21,11 @@ namespace WindowsFormsApp5
 
         public static Random rand = new Random();
 
+        public Color Color;
+        public float Opacity = 0; // От 0 до 1
+        public float LifeTime = 100; // Время жизни частицы
+        public bool IsAppearing = true; // Флаг, показывающий появляется ли частица или исчезает
+
         public virtual void Draw(Graphics g)
         {
             float k = Math.Min(1f, Life / 100);
@@ -72,6 +77,32 @@ namespace WindowsFormsApp5
 
                 b.Dispose();
             }
+        }
+
+        public void Update()
+        {
+            if (IsAppearing)
+            {
+                Opacity += 0.1f; // Увеличили скорость появления в 5 раз (было 0.02f)
+                if (Opacity >= 1)
+                {
+                    Opacity = 1;
+                    IsAppearing = false;
+                }
+            }
+            else
+            {
+                LifeTime -= 0.5f; // Уменьшаем время жизни
+                if (LifeTime <= 30) // Начинаем исчезать, когда осталось мало времени жизни
+                {
+                    Opacity = LifeTime / 30; // Постепенное исчезновение
+                }
+            }
+        }
+
+        public bool IsDead()
+        {
+            return LifeTime <= 0 || Opacity <= 0;
         }
     }
 }
