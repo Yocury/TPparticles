@@ -28,13 +28,58 @@ namespace WindowsFormsApp5
         private int particleRadius;
         private float redParticleProbability;
         private float particleLifeTime; // Добавляем время жизни как параметр сложности
-
-        // Перечисление для уровней сложности
-        private enum Difficulty { Easy, Medium, Hard }
+        private MenuForm.Difficulty currentDifficulty; // Сохраняем текущую сложность
+        
+        // Система очков
+        private float score = 0;
+        private Label topRightScoreLabel; // Новая метка для счёта справа сверху
+        private Label lastPointsLabel; // Метка для отображения последнего изменения очков
+        private Timer pointsFadeTimer; // Таймер для исчезновения сообщения о последних очках
 
         public Form1()
         {
             InitializeComponent();
+
+            // Настраиваем счет справа сверху
+            topRightScoreLabel = new Label
+            {
+                AutoSize = true,
+                Font = new Font("Arial", 16, FontStyle.Bold),
+                Location = new Point(this.ClientSize.Width - 150, 20),
+                BackColor = Color.FromArgb(200, 255, 255, 255),
+                ForeColor = Color.DarkGreen,
+                Padding = new Padding(5),
+                BorderStyle = BorderStyle.FixedSingle,
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            this.Controls.Add(topRightScoreLabel);
+
+            // Обработчик изменения размера формы
+            this.Resize += (s, e) =>
+            {
+                topRightScoreLabel.Location = new Point(this.ClientSize.Width - topRightScoreLabel.Width - 20, 20);
+            };
+
+            // Настраиваем метку для отображения изменения очков
+            lastPointsLabel = new Label
+            {
+                AutoSize = true,
+                Font = new Font("Arial", 20, FontStyle.Bold),
+                Location = new Point(20, 80),
+                BackColor = Color.Transparent,
+                ForeColor = Color.Green,
+                Visible = false
+            };
+            this.Controls.Add(lastPointsLabel);
+
+            // Настраиваем таймер для исчезновения сообщения
+            pointsFadeTimer = new Timer();
+            pointsFadeTimer.Interval = 1000; // 1 секунда
+            pointsFadeTimer.Tick += (s, e) =>
+            {
+                lastPointsLabel.Visible = false;
+                pointsFadeTimer.Stop();
+            };
 
             // Показываем меню выбора сложности
             using (var menuForm = new MenuForm())
@@ -46,8 +91,9 @@ namespace WindowsFormsApp5
                     return;
                 }
 
+                currentDifficulty = menuForm.SelectedDifficulty;
                 // Устанавливаем параметры в зависимости от выбранной сложности
-                SetDifficultyParameters((MenuForm.Difficulty)menuForm.SelectedDifficulty);
+                SetDifficultyParameters(currentDifficulty);
             }
 
             // Создаем bitmap после инициализации формы
@@ -56,6 +102,164 @@ namespace WindowsFormsApp5
                 picDisplay.Image = new Bitmap(picDisplay.Width, picDisplay.Height);
                 timer1.Interval = 16;
                 timer1.Start();
+            }
+
+            UpdateScoreDisplay();
+        }
+
+        private void UpdateScoreDisplay()
+        {
+            string difficultyText = "";
+            switch (currentDifficulty)
+            {
+                case MenuForm.Difficulty.Easy:
+                    difficultyText = "Лёгкий";
+                    break;
+                case MenuForm.Difficulty.Medium:
+                    difficultyText = "Средний";
+                    break;
+                case MenuForm.Difficulty.Hard:
+                    difficultyText = "Сложный";
+                    break;
+                default:
+                    difficultyText = "";
+                    break;
+            }
+            
+            if (topRightScoreLabel != null)
+            {
+                topRightScoreLabel.Text = $"Счёт: {score:F1}";
+                topRightScoreLabel.Location = new Point(this.ClientSize.Width - topRightScoreLabel.Width - 20, 20);
+                topRightScoreLabel.BringToFront();
+            }
+            
+            this.Invalidate();
+            this.Update();
+        }
+
+        private void ShowPointsChange(float points, bool isRed = false)
+        {
+            string prefix = points > 0 ? "+" : "";
+            lastPointsLabel.Text = $"{prefix}{points:F1}";
+            
+            // Устанавливаем цвет в зависимости от типа очков
+            if (isRed)
+            {
+                lastPointsLabel.ForeColor = Color.Red;
+            }
+            else
+            {
+                lastPointsLabel.ForeColor = points >= 1 ? Color.Green : Color.Orange;
+            }
+
+            // Показываем метку
+            lastPointsLabel.Visible = true;
+            
+            // Перезапускаем таймер
+            pointsFadeTimer.Stop();
+            pointsFadeTimer.Start();
+        }
+
+        private void RestartGame()
+        {
+            particles.Clear();
+            score = 0;
+            UpdateScoreDisplay(); // Обновляем отображение счёта при перезапуске
+            
+            using (var menuForm = new MenuForm())
+            {
+                if (menuForm.ShowDialog() != DialogResult.OK)
+                {
+                    Application.Exit();
+                    return;
+                }
+
+                currentDifficulty = menuForm.SelectedDifficulty;
+                SetDifficultyParameters(currentDifficulty);
+            }
+
+            UpdateScoreDisplay(); // Обновляем отображение после выбора сложности
+            
+            timer1.Start();
+        }
+
+        private void GameOver()
+        {
+            timer1.Stop();
+            
+            // Создаем форму для отображения результата
+            Form gameOverForm = new Form
+            {
+                Size = new Size(400, 300),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                MinimizeBox = false,
+                Text = "Конец игры"
+            };
+
+            // Заголовок
+            Label titleLabel = new Label
+            {
+                AutoSize = false,
+                Size = new Size(360, 50),
+                Location = new Point(20, 20),
+                Font = new Font("Arial", 24, FontStyle.Bold),
+                Text = "Игра окончена!",
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+
+            // Текущий счёт
+            Label scoreLabel = new Label
+            {
+                AutoSize = false,
+                Size = new Size(360, 100),
+                Location = new Point(20, 80),
+                Font = new Font("Arial", 20, FontStyle.Bold),
+                Text = $"Ваш счёт:\n{score:F1}",
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+
+            // Кнопка "Играть ещё раз"
+            Button restartButton = new Button
+            {
+                Text = "Играть ещё раз",
+                Size = new Size(160, 40),
+                Location = new Point(40, 200),
+                Font = new Font("Arial", 12, FontStyle.Bold),
+                BackColor = Color.LightGreen
+            };
+            restartButton.Click += (s, e) =>
+            {
+                gameOverForm.DialogResult = DialogResult.Retry;
+                gameOverForm.Close();
+            };
+
+            // Кнопка "Завершить"
+            Button exitButton = new Button
+            {
+                Text = "Завершить",
+                Size = new Size(160, 40),
+                Location = new Point(200, 200),
+                Font = new Font("Arial", 12, FontStyle.Bold),
+                BackColor = Color.LightCoral
+            };
+            exitButton.Click += (s, e) =>
+            {
+                gameOverForm.DialogResult = DialogResult.Cancel;
+                gameOverForm.Close();
+            };
+
+            gameOverForm.Controls.AddRange(new Control[] { titleLabel, scoreLabel, restartButton, exitButton });
+
+            // Обрабатываем результат
+            if (gameOverForm.ShowDialog() == DialogResult.Retry)
+            {
+                RestartGame();
+            }
+            else
+            {
+                Application.Exit();
             }
         }
 
@@ -190,16 +394,44 @@ namespace WindowsFormsApp5
             for (int i = particles.Count - 1; i >= 0; i--)
             {
                 var particle = particles[i];
-                // Проверяем попадание клика в частицу
                 if (Math.Pow(e.X - particle.X, 2) + Math.Pow(e.Y - particle.Y, 2) <= Math.Pow(particle.Radius, 2))
                 {
-                    // Убираем только зеленые частицы при клике
                     if (particle.Color == Color.Green)
                     {
+                        float points;
+                        if (particle.LifeTime <= 15)
+                        {
+                            points = 0.5f;
+                            score += points;
+                        }
+                        else
+                        {
+                            points = 1.0f;
+                            score += points;
+                        }
+                        ShowPointsChange(points);
                         particles.RemoveAt(i);
-                        // Устанавливаем задержку для появления новой зеленой частицы
                         greenSpawnDelay = (float)(random.NextDouble() * (maxSpawnDelay - minSpawnDelay) + minSpawnDelay);
                     }
+                    else if (particle.Color == Color.Red)
+                    {
+                        switch (currentDifficulty)
+                        {
+                            case MenuForm.Difficulty.Easy:
+                                score -= 2;
+                                ShowPointsChange(-2, true);
+                                break;
+                            case MenuForm.Difficulty.Medium:
+                                score -= 10;
+                                ShowPointsChange(-10, true);
+                                break;
+                            case MenuForm.Difficulty.Hard:
+                                GameOver();
+                                return;
+                        }
+                        particles.RemoveAt(i);
+                    }
+                    UpdateScoreDisplay(); // Обновляем отображение счёта после любого изменения
                     break;
                 }
             }
